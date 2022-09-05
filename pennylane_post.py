@@ -36,7 +36,6 @@ def pauli_gates(p, wires, rng_key):
     return list_gate_set
 
 
-# 3. create qml.expval function
 def get_circuit(list_pauli_gates, H):
     num_layers = len(list_pauli_gates)
     num_qubits = len(list_pauli_gates[0])
@@ -74,7 +73,7 @@ if __name__ == "__main__":
         AdamOptimizer(stepsize=stepsize),
     ]
 
-    # 1. build hamiltonian
+    # build hamiltonian
     obs = [qml.PauliZ(0) @ qml.PauliZ(1)]
     coeffs = [1.0]
     H = qml.Hamiltonian(coeffs, obs)

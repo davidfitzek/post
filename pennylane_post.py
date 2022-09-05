@@ -36,6 +36,30 @@ def pauli_gates(p, wires, rng_key):
     return list_gate_set
 
 
+# 3. create qml.expval function
+def get_circuit(list_pauli_gates, H):
+    num_layers = len(list_pauli_gates)
+    num_qubits = len(list_pauli_gates[0])
+    wires = range(num_qubits)
+    dev = qml.device("default.qubit", wires=wires)
+
+    @qml.qnode(dev)
+    def circuit(params):
+        params = np.reshape(params, (num_layers, num_qubits))
+        for i in wires:
+            qml.RY(np.pi / 4, wires=i)
+        for layer in range(num_layers):
+            for wire in wires:
+                list_pauli_gates[layer][wire](params[layer][wire], wires=wire)
+            qml.Barrier(wires=wires)
+            for i in range(num_qubits - 1):
+                qml.CZ(wires=[i, i + 1])
+            qml.Barrier(wires=wires)
+        return qml.expval(H)
+
+    return circuit
+
+
 if __name__ == "__main__":
     # set parameters
     p = 5
@@ -55,37 +79,6 @@ if __name__ == "__main__":
     coeffs = [1.0]
     H = qml.Hamiltonian(coeffs, obs)
 
-    # 3. create qml.expval function
-    def get_circuit(list_pauli_gates, H):
-        num_layers = len(list_pauli_gates)
-        num_qubits = len(list_pauli_gates[0])
-        wires = range(num_qubits)
-
-        dev = qml.device("default.qubit", wires=wires)
-
-        @qml.qnode(dev)
-        def circuit(params):
-
-            params = np.reshape(params, (num_layers, num_qubits))
-
-            for i in wires:
-                qml.RY(np.pi / 4, wires=i)
-
-            for layer in range(num_layers):
-
-                for wire in wires:
-                    list_pauli_gates[layer][wire](params[layer][wire], wires=wire)
-
-                qml.Barrier(wires=wires)
-
-                for i in range(num_qubits - 1):
-                    qml.CZ(wires=[i, i + 1])
-
-                qml.Barrier(wires=wires)
-            return qml.expval(H)
-
-        return circuit
-
     dataset = []
     for k in range(steps):
         dataset += get_datapoint(k, -1, "Ground state")
@@ -100,7 +93,6 @@ if __name__ == "__main__":
             init_params = qnp.random.random((p * num_qubits)) * 2 * np.pi
             exp_val = circuit(init_params)
             dataset += get_datapoint(0, exp_val, optimizer_id)
-
             params = copy(init_params)
             for k in tqdm(range(1, steps + 1)):  # skip index zero.
                 params = optimizer.step(circuit, params)
